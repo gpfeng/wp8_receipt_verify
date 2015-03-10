@@ -10,7 +10,7 @@ Windonws phone 8 in-app-purchase receipt verification with Golang
 For the 1st problem, there are 2 solutions:
 
 *	wrap the x509 package to ignore the "negative serial number" error
-*	extract public key form the certification using openssl or key chain
+*	extract public key from the certification using openssl or key chain
 
 For the 2nd problem
 
