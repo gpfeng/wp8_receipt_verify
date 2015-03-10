@@ -79,7 +79,7 @@ func (att canonAtt) Less(i, j int) bool {
 }
 
 func digestBase64(data string) string {
-    return base64.StdEncoding.EncodeToString(digest(data))
+	return base64.StdEncoding.EncodeToString(digest(data))
 }
 
 func digest(data string) []byte {
@@ -93,23 +93,23 @@ func ParseAndCanonicalizeXml(xmlstring string) (string, string, string, string, 
 	// write xml string to a buffer
 	var buffer, out bytes.Buffer
 	writer := bufio.NewWriter(&buffer)
-    writer.Write([]byte(xmlstring))
-    writer.Flush()
+	writer.Write([]byte(xmlstring))
+	writer.Flush()
 
 	// read from the buffer
 	decoder := xml.NewDecoder(bytes.NewReader(buffer.Bytes()))
 	outWriter := bufio.NewWriter(&out)
 
-    charData := ""
-    tagStart := false
+	charData := ""
+	tagStart := false
 	stack := &stack{}
 
-    digestValue := ""
-    signatureValue := ""
-    signatureTagStart := -1
-    signatureTagEnd := -1
-    signedinfoTagStart := -1
-    signedinfoTagEnd := -1
+	digestValue := ""
+	signatureValue := ""
+	signatureTagStart := -1
+	signatureTagEnd := -1
+	signedinfoTagStart := -1
+	signedinfoTagEnd := -1
 
 	writeStartElement := func(writer io.Writer, start xml.StartElement) {
 		fmt.Fprintf(writer, "<%s", start.Name.Local)
@@ -123,11 +123,11 @@ func ParseAndCanonicalizeXml(xmlstring string) (string, string, string, string, 
 			if currentNs != start.Name.Space {
 				fmt.Fprintf(writer, " %s=\"%s\"", "xmlns", start.Name.Space)
 			}
-            // inhiret tag Signature's namespace for SignedInfo
-            // just for conveniance...
-            if start.Name.Local == SIGNEDINFO_TAG {
-                fmt.Fprintf(writer, " %s=\"%s\"", "xmlns", SIGNEDINFO_XMLNS)
-            }
+			// inhiret tag Signature's namespace for SignedInfo
+			// just for conveniance...
+			if start.Name.Local == SIGNEDINFO_TAG {
+				fmt.Fprintf(writer, " %s=\"%s\"", "xmlns", SIGNEDINFO_XMLNS)
+			}
 		}
 
 		stack.Push(start.Name.Space)
@@ -139,7 +139,7 @@ func ParseAndCanonicalizeXml(xmlstring string) (string, string, string, string, 
 		fmt.Fprint(writer, ">")
 	}
 
-    // parse xml token
+	// parse xml token
 	for {
 		token, err := decoder.Token()
 		if err != nil {
@@ -148,121 +148,121 @@ func ParseAndCanonicalizeXml(xmlstring string) (string, string, string, string, 
 
 		switch t := token.(type) {
 		case xml.StartElement:
-            if t.Name.Local == SIGNATURE_TAG {
-                // .<Signature
-                outWriter.Flush()
-                signatureTagStart = out.Len()
-            } else if t.Name.Local == SIGNEDINFO_TAG {
-                // .<SignedInfo
-                outWriter.Flush()
-                signedinfoTagStart = out.Len()
-            }
+			if t.Name.Local == SIGNATURE_TAG {
+				// .<Signature
+				outWriter.Flush()
+				signatureTagStart = out.Len()
+			} else if t.Name.Local == SIGNEDINFO_TAG {
+				// .<SignedInfo
+				outWriter.Flush()
+				signedinfoTagStart = out.Len()
+			}
 			writeStartElement(outWriter, t)
-            charData = ""
-            tagStart = true
+			charData = ""
+			tagStart = true
 
 		case xml.EndElement:
-            if charData != "" {
-                outWriter.Write([]byte(charData))
-                if t.Name.Local == DIGEST_VALUE_TAG {
-                    digestValue = charData
-                }
-                if t.Name.Local == SIGNATURE_VALUE_TAG {
-                    signatureValue = charData
-                }
-            }
-            charData = ""
-            tagStart = false
+			if charData != "" {
+				outWriter.Write([]byte(charData))
+				if t.Name.Local == DIGEST_VALUE_TAG {
+					digestValue = charData
+				}
+				if t.Name.Local == SIGNATURE_VALUE_TAG {
+					signatureValue = charData
+				}
+			}
+			charData = ""
+			tagStart = false
 
 			stack.Pop()
 			fmt.Fprintf(outWriter, "</%s>", t.Name.Local)
 
-            if t.Name.Local == SIGNATURE_TAG {
-                // </Signature>.
-                outWriter.Flush()
-                signatureTagEnd = out.Len()
-            } else if t.Name.Local == SIGNEDINFO_TAG {
-                // </SignedInfo>.
-                outWriter.Flush()
-                signedinfoTagEnd = out.Len()
-            }
+			if t.Name.Local == SIGNATURE_TAG {
+				// </Signature>.
+				outWriter.Flush()
+				signatureTagEnd = out.Len()
+			} else if t.Name.Local == SIGNEDINFO_TAG {
+				// </SignedInfo>.
+				outWriter.Flush()
+				signedinfoTagEnd = out.Len()
+			}
 
 		case xml.CharData:
-            if tagStart {
-                charData = string(t)
-            }
+			if tagStart {
+				charData = string(t)
+			}
 		}
 	}
 
-    // the whole xml
+	// the whole xml
 	outWriter.Flush()
-    canonicalizeXmlBytes := out.Bytes()
+	canonicalizeXmlBytes := out.Bytes()
 
-    // ...<Signatrue><SignInfo>...</SignInfo></Signature>
-    if signatureTagStart == -1 || signatureTagEnd == -1 || signedinfoTagStart == -1 || signedinfoTagEnd == -1 {
-        return "", "", "", "", errors.New(fmt.Sprintf("can't find tag %s or %s", SIGNATURE_TAG, SIGNEDINFO_TAG))
-    }
-    if digestValue == "" {
-        return "", "", "", "", errors.New("can't find digest value")
-    }
-    if signatureValue == "" {
-        return "", "", "", "", errors.New("can't find signature value")
-    }
+	// ...<Signatrue><SignInfo>...</SignInfo></Signature>
+	if signatureTagStart == -1 || signatureTagEnd == -1 || signedinfoTagStart == -1 || signedinfoTagEnd == -1 {
+		return "", "", "", "", errors.New(fmt.Sprintf("can't find tag %s or %s", SIGNATURE_TAG, SIGNEDINFO_TAG))
+	}
+	if digestValue == "" {
+		return "", "", "", "", errors.New("can't find digest value")
+	}
+	if signatureValue == "" {
+		return "", "", "", "", errors.New("can't find signature value")
+	}
 
-    // extract SignInfo node
-    signinfoNodeStr := string(canonicalizeXmlBytes[signedinfoTagStart:signedinfoTagEnd])
-    // remove Signature node
-    dataNodeStr := string(canonicalizeXmlBytes[:signatureTagStart]) + string(canonicalizeXmlBytes[signatureTagEnd:])
+	// extract SignInfo node
+	signinfoNodeStr := string(canonicalizeXmlBytes[signedinfoTagStart:signedinfoTagEnd])
+	// remove Signature node
+	dataNodeStr := string(canonicalizeXmlBytes[:signatureTagStart]) + string(canonicalizeXmlBytes[signatureTagEnd:])
 
-    return dataNodeStr, signinfoNodeStr, digestValue, signatureValue, nil
+	return dataNodeStr, signinfoNodeStr, digestValue, signatureValue, nil
 }
 
 func main() {
-    dataStr, signInfoStr, digestStr, signatureStr, err := ParseAndCanonicalizeXml(xmlstring)
-    if err != nil {
-        fmt.Printf("ParseAndCanonicalizeXml %s failed: %s\n", xmlstring, err.Error())
-        return
-    }
-    fmt.Printf("--data: \n%s\n--signInfo:\n%s\n--digest:\n%s\n--signature:\n%s\n",
-        dataStr, signInfoStr, digestStr, signatureStr)
-    fmt.Printf("\n--calculated base64 digest: \n%s\n", digestBase64(dataStr))
+	dataStr, signInfoStr, digestStr, signatureStr, err := ParseAndCanonicalizeXml(xmlstring)
+	if err != nil {
+		fmt.Printf("ParseAndCanonicalizeXml %s failed: %s\n", xmlstring, err.Error())
+		return
+	}
+	fmt.Printf("--data: \n%s\n--signInfo:\n%s\n--digest:\n%s\n--signature:\n%s\n",
+		dataStr, signInfoStr, digestStr, signatureStr)
+	fmt.Printf("\n--calculated base64 digest: \n%s\n", digestBase64(dataStr))
 
-    bytes, err := ioutil.ReadFile(certFile)
-    if err != nil {
-        fmt.Printf("read cert file failed: %s\n", err.Error())
-        return
-    }
+	bytes, err := ioutil.ReadFile(certFile)
+	if err != nil {
+		fmt.Printf("read cert file failed: %s\n", err.Error())
+		return
+	}
 
-    cert, err := MyParseCertificate(bytes)
-    if err != nil {
-        fmt.Printf("parse certificate failed: %s, cert: %v\n", err.Error(), cert)
-        return
-    }
+	cert, err := MyParseCertificate(bytes)
+	if err != nil {
+		fmt.Printf("parse certificate failed: %s, cert: %v\n", err.Error(), cert)
+		return
+	}
 
-    publickey := cert.PublicKey
-    pub, ok := publickey.(*rsa.PublicKey)
-    if !ok {
-        fmt.Printf("invalid rsa publickey: %#v\n", publickey)
-        return
-    }
+	publickey := cert.PublicKey
+	pub, ok := publickey.(*rsa.PublicKey)
+	if !ok {
+		fmt.Printf("invalid rsa publickey: %#v\n", publickey)
+		return
+	}
 
-    signatureBytes, err := base64.StdEncoding.DecodeString(signatureStr)
-    if err != nil {
-        fmt.Printf("base64 decode signature failed: %s\n", err.Error())
-        return
-    }
+	signatureBytes, err := base64.StdEncoding.DecodeString(signatureStr)
+	if err != nil {
+		fmt.Printf("base64 decode signature failed: %s\n", err.Error())
+		return
+	}
 
-    err = rsa.VerifyPKCS1v15(pub, crypto.SHA256, digest(signInfoStr), signatureBytes)
-    if err != nil {
-        fmt.Printf("rsa.VerifyPKCS1v15 failed: %s\n", err.Error())
-        return
-    }
-    fmt.Printf("\nrsa verification passed!\n")
+	err = rsa.VerifyPKCS1v15(pub, crypto.SHA256, digest(signInfoStr), signatureBytes)
+	if err != nil {
+		fmt.Printf("rsa.VerifyPKCS1v15 failed: %s\n", err.Error())
+		return
+	}
+	fmt.Printf("\nrsa verification passed!\n")
 }
 
 const certFile = "IapReceiptProduction.cer"
 
-const xmlstring string =`
+const xmlstring string = `
 <?xml version="1.0"?>
 <Receipt Version="1.0" CertificateId="A656B9B1B3AA509EEA30222E6D5E7DBDA9822DCD" xmlns="http://schemas.microsoft.com/windows/2012/store/receipt">
   <ProductReceipt PurchasePrice="$20.89" PurchaseDate="2012-11-30T21:32:07.096Z" Id="2f9c5c8f-3e1d-4fc7-a871-ac58f7e78053" AppId="3ec6cd9a-ca82-4d38-bfdf-ecafdb35a738" ProductId="Test" ProductType="Consumable" PublisherDeviceId="Test" MicrosoftProductId="59ef70aa-7099-4679-889e-f21919bfd2c6" />
